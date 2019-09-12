@@ -53,6 +53,11 @@ type ResetMessage struct {
 type HeartBeat struct {
 }
 
+type DisconnectedMessage struct {
+	Success bool
+	Err     string
+}
+
 type IllegalMessage struct {
 	Success bool
 	Err     string

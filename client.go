@@ -19,6 +19,15 @@ type Client struct {
 
 	heartBeatTicker     *time.Ticker     //心跳包的发送
 	heartBeatTickerOver chan interface{} //关闭心跳
+
+	onConnected  func(c *Client)
+	onConnecting func(c *Client)
+	onTimeout    func(c *Client)
+	onError      func(c *Client, err error)
+
+	onRelayOpen   func(data []byte)
+	onRelayClosed func(data []byte)
+	onRelayReset  func(data []byte)
 }
 
 func NewSDK(addr string) *Client {
@@ -29,6 +38,34 @@ func NewSDK(addr string) *Client {
 	return client
 }
 
+func (c *Client) OnConnecting(f func(c *Client)) {
+	c.onConnecting = f
+}
+
+func (c *Client) OnConnected(f func(c *Client)) {
+	c.onConnected = f
+}
+
+func (c *Client) OnTimeout(f func(c *Client)) {
+	c.onTimeout = f
+}
+
+func (c *Client) OnError(f func(c *Client, err error)) {
+	c.onError = f
+}
+
+func (c *Client) OnRelayOpen(f func(data []byte)) {
+	c.onRelayOpen = f
+}
+
+func (c *Client) OnRelayClosed(f func(data []byte)) {
+	c.onRelayClosed = f
+}
+
+func (c *Client) OnRelayReset(f func(data []byte)) {
+	c.onRelayReset = f
+}
+
 func (c *Client) init() {
 
 	c.heartBeatTicker = time.NewTicker(time.Second * 5)
@@ -37,18 +74,28 @@ func (c *Client) init() {
 	c.reconnectTicker = time.NewTicker(time.Second * 15)
 	c.reconnectTickerOver = make(chan interface{})
 
-	c.connect()
+	go c.connect()
+	go c.heartBeat()
 }
 
 func (c *Client) connect() {
 	if !c.connected {
 		conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:17000", c.addr), time.Second*3)
+		if c.onConnecting != nil {
+			c.onConnecting(c)
+		}
 		if err != nil {
+			if c.onTimeout != nil {
+				c.onTimeout(c)
+			}
 			log.Fatal("连接服务器失败", err)
 			return
 		}
 		tcpConn, ok := conn.(*net.TCPConn)
 		if !ok {
+			if c.onError != nil {
+				c.onError(c, err)
+			}
 			log.Fatal("连接类型转换失败", err)
 			return
 		}
@@ -56,9 +103,17 @@ func (c *Client) connect() {
 		err = tcpConn.SetWriteBuffer(5000)
 		err2 := tcpConn.SetReadBuffer(5000)
 		if err != nil || err2 != nil {
+			if c.onError != nil {
+				c.onError(c, err)
+			}
+			c.connected = false
 			log.Fatal("设置读写缓冲区失败", err)
 		}
-		go c.clientHandle(tcpConn)
+		if c.onConnected != nil {
+			c.connected = true
+			c.onConnected(c)
+		}
+		go c.clientHandle()
 	}
 }
 
@@ -83,25 +138,30 @@ func (c *Client) heartBeat() {
 			if c.connected {
 				data, _ := Encode(&HeartBeat{})
 				_, err := c.sess.Write(data)
+				log.Println("客户端发送心跳包", data[4])
 				if err != nil {
+					if c.onError != nil {
+						c.onError(c, err)
+					}
 					log.Println("发送心跳包失败")
 					return
 				}
 			}
-
 		case <-c.heartBeatTickerOver:
-			return
+			log.Println("停止心跳")
 		}
 	}
 }
 
-func (c *Client) clientHandle(conn net.Conn) {
-	c.Handle(ConnectID, nil, conn)
+func (c *Client) clientHandle() {
 	defer func() {
-		if conn != nil {
-			c.Handle(DisconnectID, nil, conn)
-			err := conn.Close()
+		if c.sess != nil {
+			c.Handle(DisconnectID, nil, c.sess)
+			err := c.sess.Close()
 			if err != nil {
+				if c.onError != nil {
+					c.onError(c, err)
+				}
 				log.Println("关闭连接失败")
 			}
 		}
@@ -110,14 +170,13 @@ func (c *Client) clientHandle(conn net.Conn) {
 	buf := make([]byte, 1024)
 	var cache bytes.Buffer
 	for {
-		n, err := conn.Read(buf)
+		n, err := c.sess.Read(buf)
 		if err != nil {
 			break
 		}
-
 		cache.Write(buf[:n])
 		for {
-			if c.unpack(&cache, conn) {
+			if c.unpack(&cache, c.sess) {
 				break
 			}
 		}
@@ -164,8 +223,71 @@ func (c *Client) Close() {
 	if c.sess != nil {
 		err := c.sess.Close()
 		if err != nil {
+			if c.onError != nil {
+				c.onError(c, err)
+			}
 			log.Println("关闭连接失败", err)
 		}
 	}
+	c.connected = false
 	c.sess = nil
+	log.Println("客户端关闭连接成功")
+}
+
+func (c *Client) RelayOpen(relay []bool) {
+	if c.connected {
+		log.Println("RelayOpen")
+		if len(relay) != 16 {
+			log.Println("打开继电器参数长度必须为16")
+			return
+		}
+		open := OpenMessageRequest{
+			Relay: relay,
+		}
+		err := c.Send(&open)
+		if err != nil {
+			if c.onError != nil {
+				c.onError(c, err)
+			}
+		}
+	} else {
+		log.Println("请重新连接服务器")
+	}
+}
+
+func (c *Client) RelayClosed(relay []bool) {
+	if c.connected {
+		if len(relay) != 16 {
+			log.Println("打开继电器参数长度必须为16")
+			return
+		}
+		open := CloseMessageRequest{
+			Relay: relay,
+		}
+		encode, _ := Encode(&open)
+		_, err := c.sess.Write(encode)
+		if err != nil {
+			if c.onError != nil {
+				c.onError(c, err)
+			}
+		}
+	} else {
+		log.Println("请重新连接服务器")
+	}
+
+}
+
+func (c *Client) RelayReset() {
+	if c.connected {
+		open := ResetMessageRequest{}
+		encode, _ := Encode(&open)
+		_, err := c.sess.Write(encode)
+		if err != nil {
+			if c.onError != nil {
+				c.onError(c, err)
+			}
+		}
+	} else {
+		log.Println("请重新连接服务器")
+	}
 }

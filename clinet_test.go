@@ -10,45 +10,46 @@ import (
 func TestClient(t *testing.T) {
 	group := sync.WaitGroup{}
 	group.Add(1)
-	sdk := NewSDK("192.168.0.176")
+	sdkClient := NewSDKClient("192.168.0.176")
 
-	sdk.OnConnecting(func(c *Client) {
+	sdkClient.OnConnecting(func(c *Client) {
 		log.Println("正在连接到服务器")
 	})
 
-	sdk.OnConnected(func(c *Client) {
+	sdkClient.OnConnected(func(c *Client) {
 		log.Println("已连接到服务器")
 	})
 
-	sdk.OnTimeout(func(c *Client) {
+	sdkClient.OnTimeout(func(c *Client) {
 		log.Println("连接到服务器超时")
 		group.Done()
 		return
 	})
 
-	sdk.OnError(func(c *Client, err error) {
+	sdkClient.OnError(func(c *Client, err error) {
 		log.Println("err", err)
 		group.Done()
 		return
 	})
 	time.Sleep(time.Second * 2)
 	open := []bool{true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, true}
+	sdkClient.RelayOpen(open)
+	sdkClient.OnRelayOpen(func(data []byte) {
+		log.Println("OnRelayOpen", string(data))
+	})
+	time.Sleep(3 * time.Second)
 	closed := []bool{false, false, true, false, true, false, true, false, true, false, true, false, true, false, true, true}
-	sdk.RelayOpen(open)
-	sdk.OnRelayOpen(func(data []byte) {
-		log.Println(string(data))
+	sdkClient.RelayClosed(closed)
+	sdkClient.OnRelayClosed(func(data []byte) {
+		log.Println("OnRelayClosed", string(data))
 	})
 	time.Sleep(3 * time.Second)
-	sdk.RelayClosed(closed)
-	sdk.OnRelayClosed(func(data []byte) {
-		log.Println(string(data))
+	sdkClient.RelayReset()
+	sdkClient.OnRelayReset(func(data []byte) {
+		log.Println("OnRelayReset", string(data))
 	})
 	time.Sleep(3 * time.Second)
-	sdk.RelayReset()
-	sdk.OnRelayReset(func(data []byte) {
-		log.Println(data)
-	})
-	time.Sleep(3 * time.Second)
-	sdk.Close()
+	group.Done()
+	go sdkClient.Close()
 	group.Wait()
 }

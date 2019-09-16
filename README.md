@@ -14,7 +14,7 @@ import (
     "time"
 )
 func main()  {
-    sdk := relaySDK.NewSDK("192.168.0.176")
+	sdk := relaySDK.NewSDKClient("192.168.0.176")
  
  	sdk.OnConnecting(func(c *relaySDK.Client) {
  		log.Println("正在连接到服务器")
@@ -54,7 +54,7 @@ func main()  {
  		log.Println(data)
  	})
  	time.Sleep(3 * time.Second)
- 	sdk.Close()
+ 	go sdk.Close()
 }
 
 ```

@@ -32,7 +32,7 @@ type Client struct {
 }
 
 //实例化客户端
-func NewSDK(addr string) *Client {
+func NewSDKClient(addr string) *Client {
 	client := &Client{
 		addr: addr,
 	}
@@ -246,7 +246,6 @@ func (c *Client) Close() {
 //打开继电器
 func (c *Client) RelayOpen(relay []bool) {
 	if c.connected {
-		log.Println("RelayOpen")
 		if len(relay) != 16 {
 			log.Println("打开继电器参数长度必须为16")
 			return
@@ -283,7 +282,7 @@ func (c *Client) RelayClosed(relay []bool) {
 			}
 		}
 	} else {
-		log.Println(",关闭继电器失败,请重新连接服务器")
+		log.Println("关闭继电器失败,请重新连接服务器")
 	}
 
 }
@@ -291,8 +290,8 @@ func (c *Client) RelayClosed(relay []bool) {
 //重置继电器
 func (c *Client) RelayReset() {
 	if c.connected {
-		open := ResetMessageRequest{}
-		encode, _ := Encode(&open)
+		reset := ResetMessageRequest{}
+		encode, _ := Encode(&reset)
 		_, err := c.sess.Write(encode)
 		if err != nil {
 			if c.onError != nil {

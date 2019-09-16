@@ -8,9 +8,6 @@ import (
 func (c *Client) Handle(msgId MsgID, data []byte, conn net.Conn) {
 	switch msgId {
 	case ConnectID:
-		if c.onConnected != nil {
-			c.onConnected(c)
-		}
 		log.Println("ConnectID", string(data[5:]))
 	case DisconnectID:
 		log.Println("DisconnectID", string(data[5:]))

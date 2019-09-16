@@ -9,6 +9,7 @@ import (
 	"time"
 )
 
+//客户端
 type Client struct {
 	sess      *net.TCPConn
 	connected bool
@@ -30,6 +31,7 @@ type Client struct {
 	onRelayReset  func(data []byte)
 }
 
+//实例化客户端
 func NewSDK(addr string) *Client {
 	client := &Client{
 		addr: addr,
@@ -66,6 +68,7 @@ func (c *Client) OnRelayReset(f func(data []byte)) {
 	c.onRelayReset = f
 }
 
+//初始化
 func (c *Client) init() {
 
 	c.heartBeatTicker = time.NewTicker(time.Second * 5)
@@ -78,6 +81,7 @@ func (c *Client) init() {
 	go c.heartBeat()
 }
 
+//连接
 func (c *Client) connect() {
 	if !c.connected {
 		conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:17000", c.addr), time.Second*3)
@@ -131,6 +135,7 @@ func (c *Client) reconnect() {
 	}
 }
 
+//心跳
 func (c *Client) heartBeat() {
 	for {
 		select {
@@ -153,6 +158,7 @@ func (c *Client) heartBeat() {
 	}
 }
 
+//消息处理,解包
 func (c *Client) clientHandle() {
 	defer func() {
 		if c.sess != nil {
@@ -183,6 +189,7 @@ func (c *Client) clientHandle() {
 	}
 }
 
+//解包
 func (c *Client) unpack(cache *bytes.Buffer, conn net.Conn) bool {
 	if cache.Len() < 5 {
 		return true
@@ -199,6 +206,7 @@ func (c *Client) unpack(cache *bytes.Buffer, conn net.Conn) bool {
 	return false
 }
 
+//发送数据
 func (c *Client) Send(msg interface{}) error {
 	b, err := Encode(msg)
 	if err != nil {
@@ -211,6 +219,7 @@ func (c *Client) Send(msg interface{}) error {
 	return err
 }
 
+//关闭操作
 func (c *Client) Close() {
 	c.reconnectTicker.Stop()
 	c.reconnectTickerOver <- false
@@ -234,6 +243,7 @@ func (c *Client) Close() {
 	log.Println("客户端关闭连接成功")
 }
 
+//打开继电器
 func (c *Client) RelayOpen(relay []bool) {
 	if c.connected {
 		log.Println("RelayOpen")
@@ -251,10 +261,11 @@ func (c *Client) RelayOpen(relay []bool) {
 			}
 		}
 	} else {
-		log.Println("请重新连接服务器")
+		log.Println("打开继电器失败,请重新连接服务器")
 	}
 }
 
+//关闭继电器
 func (c *Client) RelayClosed(relay []bool) {
 	if c.connected {
 		if len(relay) != 16 {
@@ -272,11 +283,12 @@ func (c *Client) RelayClosed(relay []bool) {
 			}
 		}
 	} else {
-		log.Println("请重新连接服务器")
+		log.Println(",关闭继电器失败,请重新连接服务器")
 	}
 
 }
 
+//重置继电器
 func (c *Client) RelayReset() {
 	if c.connected {
 		open := ResetMessageRequest{}
@@ -288,6 +300,6 @@ func (c *Client) RelayReset() {
 			}
 		}
 	} else {
-		log.Println("请重新连接服务器")
+		log.Println("重置继电器失败,请重新连接服务器")
 	}
 }

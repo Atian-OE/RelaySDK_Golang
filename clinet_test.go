@@ -7,18 +7,7 @@ import (
 	"time"
 )
 
-func TestName3(t *testing.T) {
-	log.Printf("%d", byte(250))
-	log.Printf("%s", string(byte(250)))
-}
-func TestName2(t *testing.T) {
-	log.Println(time.Now().UnixNano() / 1000000)    //1568269794412
-	log.Println(time.Now().UnixNano() / 1000000000) //1568269794412
-	log.Println(time.Now().Unix())                  //1568269837
-	log.Println(time.Now().UnixNano())              //1568269794412
-}
-
-func TestName(t *testing.T) {
+func TestClient(t *testing.T) {
 	group := sync.WaitGroup{}
 	group.Add(1)
 	sdk := NewSDK("192.168.0.176")

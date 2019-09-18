@@ -25,4 +25,4 @@ _testmain.go
 *.prof
 
 .idea
-go.mod
+go.sum

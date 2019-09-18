@@ -113,8 +113,9 @@ func (c *Client) connect() {
 			c.connected = false
 			log.Fatal("设置读写缓冲区失败", err)
 		}
+
+		c.connected = true
 		if c.onConnected != nil {
-			c.connected = true
 			c.onConnected(c)
 		}
 		go c.clientHandle()
@@ -168,7 +169,7 @@ func (c *Client) clientHandle() {
 				if c.onError != nil {
 					c.onError(c, err)
 				}
-				log.Println("关闭连接失败")
+				log.Fatal("关闭连接失败")
 			}
 		}
 	}()
@@ -233,7 +234,7 @@ func (c *Client) Close() {
 		err := c.sess.Close()
 		if err != nil {
 			if c.onError != nil {
-				c.onError(c, err)
+				c.onError(c, SendErr(err))
 			}
 			log.Println("关闭连接失败", err)
 		}

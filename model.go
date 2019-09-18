@@ -2,6 +2,8 @@ package relaySDK
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log"
 )
 
@@ -15,6 +17,12 @@ const (
 	Reset        MsgID = 4   //重置继电器
 	HeartBeatID  MsgID = 250 //心跳
 	Illegal      MsgID = 255 //非法请求
+)
+
+var (
+	SendErr = func(err error) error {
+		return errors.New(fmt.Sprintf("客户端发送消息失败:%s", err.Error()))
+	}
 )
 
 //打开继电器请求参数

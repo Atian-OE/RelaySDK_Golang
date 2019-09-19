@@ -32,14 +32,14 @@ func TestClient(t *testing.T) {
 		return
 	})
 	time.Sleep(time.Second * 2)
-	open := []bool{true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, true}
-	sdkClient.RelayOpen(open)
+	open := [32]bool{true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, true}
+	sdkClient.RelayOpen(open[:])
 	sdkClient.OnRelayOpen(func(data []byte) {
 		log.Println("OnRelayOpen", string(data))
 	})
 	time.Sleep(3 * time.Second)
-	closed := []bool{false, false, true, false, true, false, true, false, true, false, true, false, true, false, true, true}
-	sdkClient.RelayClosed(closed)
+	closed := [32]bool{false, false, true, false, true, false, true, false, true, false, true, false, true, false, true, true}
+	sdkClient.RelayClosed(closed[:])
 	sdkClient.OnRelayClosed(func(data []byte) {
 		log.Println("OnRelayClosed", string(data))
 	})

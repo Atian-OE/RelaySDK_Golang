@@ -242,8 +242,8 @@ func (c *Client) Close() {
 //打开继电器
 func (c *Client) RelayOpen(relay []bool) {
 	if c.connected {
-		if len(relay) != 16 {
-			log.Println("打开继电器参数长度必须为16")
+		if len(relay) != 32 {
+			log.Println("打开继电器参数长度必须为32")
 			return
 		}
 		open := OpenMessageRequest{
@@ -263,8 +263,8 @@ func (c *Client) RelayOpen(relay []bool) {
 //关闭继电器
 func (c *Client) RelayClosed(relay []bool) {
 	if c.connected {
-		if len(relay) != 16 {
-			log.Println("打开继电器参数长度必须为16")
+		if len(relay) != 32 {
+			log.Println("打开继电器参数长度必须为32")
 			return
 		}
 		open := CloseMessageRequest{

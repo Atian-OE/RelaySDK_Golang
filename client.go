@@ -84,7 +84,7 @@ func (c *Client) init() {
 //连接
 func (c *Client) connect() {
 	if !c.connected {
-		conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:17000", c.addr), time.Second*3)
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s", c.addr), time.Second*3)
 		if c.onConnecting != nil {
 			c.onConnecting(c)
 		}

@@ -10,7 +10,7 @@ import (
 func TestClient(t *testing.T) {
 	group := sync.WaitGroup{}
 	group.Add(1)
-	sdkClient := NewSDKClient("192.168.0.176")
+	sdkClient := NewSDKClient("192.168.0.176:17000")
 
 	sdkClient.OnConnecting(func(c *Client) {
 		log.Println("正在连接到服务器")

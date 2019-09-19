@@ -92,7 +92,6 @@ func (c *Client) connect() {
 			if c.onTimeout != nil {
 				c.onTimeout(c)
 			}
-			log.Fatal("连接服务器失败", err)
 			return
 		}
 		tcpConn, ok := conn.(*net.TCPConn)
@@ -100,7 +99,6 @@ func (c *Client) connect() {
 			if c.onError != nil {
 				c.onError(c, err)
 			}
-			log.Fatal("连接类型转换失败", err)
 			return
 		}
 		c.sess = tcpConn
@@ -110,10 +108,8 @@ func (c *Client) connect() {
 			if c.onError != nil {
 				c.onError(c, err)
 			}
-			c.connected = false
-			log.Fatal("设置读写缓冲区失败", err)
+			return
 		}
-
 		c.connected = true
 		if c.onConnected != nil {
 			c.onConnected(c)
@@ -169,7 +165,6 @@ func (c *Client) clientHandle() {
 				if c.onError != nil {
 					c.onError(c, err)
 				}
-				log.Fatal("关闭连接失败")
 			}
 		}
 	}()
@@ -234,7 +229,7 @@ func (c *Client) Close() {
 		err := c.sess.Close()
 		if err != nil {
 			if c.onError != nil {
-				c.onError(c, SendErr(err))
+				c.onError(c, err)
 			}
 			log.Println("关闭连接失败", err)
 		}
@@ -257,7 +252,7 @@ func (c *Client) RelayOpen(relay []bool) {
 		err := c.Send(&open)
 		if err != nil {
 			if c.onError != nil {
-				c.onError(c, err)
+				c.onError(c, SendErr(err))
 			}
 		}
 	} else {

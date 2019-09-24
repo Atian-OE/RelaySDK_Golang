@@ -77,7 +77,7 @@ func (c *Client) init() {
 	c.reconnectTicker = time.NewTicker(time.Second * 15)
 	c.reconnectTickerOver = make(chan interface{})
 
-	go c.connect()
+	go c.reconnect()
 	go c.heartBeat()
 }
 

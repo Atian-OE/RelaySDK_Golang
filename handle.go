@@ -8,10 +8,9 @@ import (
 func (c *Client) Handle(msgId MsgID, data []byte, conn net.Conn) {
 	switch msgId {
 	case ConnectID:
-		log.Println("ConnectID", string(data[5:]))
+		log.Println("ConnectID")
 	case DisconnectID:
-		log.Println("DisconnectID", string(data[5:]))
-		c.Close()
+		log.Println("DisconnectID")
 	case Open:
 		if c.onRelayOpen != nil {
 			c.onRelayOpen(data[5:])

@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"sync"
 	"time"
 )
 
 //客户端
 type Client struct {
+	one       sync.Once
 	sess      *net.TCPConn
 	connected bool
 	addr      string
@@ -125,6 +127,7 @@ func (c *Client) reconnect() {
 		select {
 		case <-c.reconnectTicker.C:
 			c.connect()
+			return
 
 		case <-c.reconnectTickerOver:
 			return
@@ -151,24 +154,14 @@ func (c *Client) heartBeat() {
 			}
 		case <-c.heartBeatTickerOver:
 			log.Println("停止心跳")
+			return
 		}
 	}
 }
 
 //消息处理,解包
 func (c *Client) clientHandle() {
-	defer func() {
-		if c.sess != nil {
-			c.Handle(DisconnectID, nil, c.sess)
-			err := c.sess.Close()
-			if err != nil {
-				if c.onError != nil {
-					c.onError(c, err)
-				}
-			}
-		}
-	}()
-
+	defer c.Close()
 	buf := make([]byte, 1024)
 	var cache bytes.Buffer
 	for {
@@ -217,26 +210,29 @@ func (c *Client) Send(msg interface{}) error {
 
 //关闭操作
 func (c *Client) Close() {
-	c.reconnectTicker.Stop()
-	c.reconnectTickerOver <- false
-	close(c.reconnectTickerOver)
+	c.one.Do(func() {
+		c.reconnectTicker.Stop()
+		c.reconnectTickerOver <- false
+		close(c.reconnectTickerOver)
 
-	c.heartBeatTicker.Stop()
-	c.heartBeatTickerOver <- false
-	close(c.heartBeatTickerOver)
+		c.heartBeatTicker.Stop()
+		c.heartBeatTickerOver <- false
+		close(c.heartBeatTickerOver)
 
-	if c.sess != nil {
-		err := c.sess.Close()
-		if err != nil {
-			if c.onError != nil {
-				c.onError(c, err)
+		if c.sess != nil {
+			c.Handle(DisconnectID, nil, c.sess)
+			err := c.sess.Close()
+			if err != nil {
+				if c.onError != nil {
+					c.onError(c, err)
+				}
+				log.Println("关闭连接失败", err)
 			}
-			log.Println("关闭连接失败", err)
 		}
-	}
-	c.connected = false
-	c.sess = nil
-	log.Println("客户端关闭连接成功")
+		c.connected = false
+		c.sess = nil
+		log.Println("客户端关闭连接成功")
+	})
 }
 
 //打开继电器

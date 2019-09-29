@@ -2,14 +2,19 @@ package relaySDK
 
 import (
 	"log"
-	"sync"
 	"testing"
 	"time"
 )
 
+func BenchmarkName(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		test()
+	}
+}
 func TestClient(t *testing.T) {
-	group := sync.WaitGroup{}
-	group.Add(1)
+	test()
+}
+func test() {
 	sdkClient := NewSDKClient("192.168.0.176:17000")
 
 	sdkClient.OnConnecting(func(c *Client) {
@@ -22,13 +27,11 @@ func TestClient(t *testing.T) {
 
 	sdkClient.OnTimeout(func(c *Client) {
 		log.Println("连接到服务器超时")
-		group.Done()
 		return
 	})
 
 	sdkClient.OnError(func(c *Client, err error) {
 		log.Println("err", err)
-		group.Done()
 		return
 	})
 	time.Sleep(time.Second * 2)
@@ -49,7 +52,5 @@ func TestClient(t *testing.T) {
 		log.Println("OnRelayReset", string(data))
 	})
 	time.Sleep(3 * time.Second)
-	group.Done()
-	go sdkClient.Close()
-	group.Wait()
+	sdkClient.Close()
 }

@@ -79,7 +79,6 @@ func (c *Client) init() {
 	c.reconnectTickerOver = make(chan interface{})
 
 	go c.reconnect()
-	go c.heartBeat()
 }
 
 //连接
@@ -93,6 +92,7 @@ func (c *Client) connect() {
 			if c.onTimeout != nil {
 				c.onTimeout(c)
 			}
+			c.reconnect()
 			return
 		}
 		tcpConn, ok := conn.(*net.TCPConn)
@@ -100,6 +100,7 @@ func (c *Client) connect() {
 			if c.onError != nil {
 				c.onError(c, err)
 			}
+			c.reconnect()
 			return
 		}
 		c.sess = tcpConn
@@ -115,12 +116,14 @@ func (c *Client) connect() {
 		if c.onConnected != nil {
 			c.onConnected(c)
 		}
+		go c.heartBeat()
 		go c.clientHandle()
 	}
 }
 
 func (c *Client) reconnect() {
 	c.connected = false
+	time.Sleep(time.Second)
 	c.connect()
 	for {
 		select {
@@ -161,7 +164,7 @@ func (c *Client) heartBeat() {
 
 //消息处理,解包
 func (c *Client) clientHandle() {
-	defer c.Close()
+	//defer c.Close()
 	buf := make([]byte, 1024)
 	var cache bytes.Buffer
 	for {
@@ -254,10 +257,6 @@ func (c *Client) RelayOpen(relay []bool) {
 		}
 	} else {
 		log.Println("打开继电器失败,请重新连接服务器")
-		time.Sleep(time.Millisecond * 200)
-		c.reconnect()
-		time.Sleep(time.Millisecond * 200)
-		c.RelayOpen(relay)
 	}
 }
 
@@ -280,10 +279,6 @@ func (c *Client) RelayClosed(relay []bool) {
 		}
 	} else {
 		log.Println("关闭继电器失败,请重新连接服务器")
-		time.Sleep(time.Millisecond * 200)
-		c.reconnect()
-		time.Sleep(time.Millisecond * 200)
-		c.RelayClosed(relay)
 	}
 
 }
@@ -301,9 +296,5 @@ func (c *Client) RelayReset() {
 		}
 	} else {
 		log.Println("重置继电器失败,请重新连接服务器")
-		time.Sleep(time.Millisecond * 200)
-		c.reconnect()
-		time.Sleep(time.Millisecond * 200)
-		c.RelayReset()
 	}
 }

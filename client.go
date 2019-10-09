@@ -2,7 +2,6 @@ package relaySDK
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -149,6 +148,7 @@ func (c *Client) heartBeat() {
 						c.onError(c, err)
 					}
 					log.Println("发送心跳包失败")
+					c.reconnect()
 					return
 				}
 			}
@@ -202,7 +202,8 @@ func (c *Client) Send(msg interface{}) error {
 		return err
 	}
 	if !c.connected {
-		return errors.New("client not connected")
+		c.reconnect()
+		time.Sleep(time.Millisecond * 200)
 	}
 	_, err = c.sess.Write(b)
 	return err
@@ -253,6 +254,10 @@ func (c *Client) RelayOpen(relay []bool) {
 		}
 	} else {
 		log.Println("打开继电器失败,请重新连接服务器")
+		time.Sleep(time.Millisecond * 200)
+		c.reconnect()
+		time.Sleep(time.Millisecond * 200)
+		c.RelayOpen(relay)
 	}
 }
 
@@ -275,6 +280,10 @@ func (c *Client) RelayClosed(relay []bool) {
 		}
 	} else {
 		log.Println("关闭继电器失败,请重新连接服务器")
+		time.Sleep(time.Millisecond * 200)
+		c.reconnect()
+		time.Sleep(time.Millisecond * 200)
+		c.RelayClosed(relay)
 	}
 
 }
@@ -292,5 +301,9 @@ func (c *Client) RelayReset() {
 		}
 	} else {
 		log.Println("重置继电器失败,请重新连接服务器")
+		time.Sleep(time.Millisecond * 200)
+		c.reconnect()
+		time.Sleep(time.Millisecond * 200)
+		c.RelayReset()
 	}
 }

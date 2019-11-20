@@ -11,6 +11,9 @@ func (c *Client) Handle(msgId MsgID, data []byte, conn net.Conn) {
 		log.Println("ConnectID")
 	case DisconnectID:
 		log.Println("DisconnectID")
+		if c.onDisconnect != nil {
+			c.onDisconnect(c)
+		}
 	case Open:
 		if c.onRelayOpen != nil {
 			c.onRelayOpen(data[5:])

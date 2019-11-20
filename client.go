@@ -22,6 +22,7 @@ type Client struct {
 	heartBeatTicker     *time.Ticker     //心跳包的发送
 	heartBeatTickerOver chan interface{} //关闭心跳
 
+	onDisconnect func(c *Client)
 	onConnected  func(c *Client)
 	onConnecting func(c *Client)
 	onTimeout    func(c *Client)
@@ -47,6 +48,10 @@ func (c *Client) OnConnecting(f func(c *Client)) {
 
 func (c *Client) OnConnected(f func(c *Client)) {
 	c.onConnected = f
+}
+
+func (c *Client) OnDisconnect(f func(c *Client)) {
+	c.onDisconnect = f
 }
 
 func (c *Client) OnTimeout(f func(c *Client)) {

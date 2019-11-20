@@ -239,6 +239,28 @@ func (c *Client) Close() {
 	})
 }
 
+//闭合所有继电器
+func (c *Client) RelayOpenAll() {
+	if c.connected {
+		open := OpenMessageRequest{
+			Relay: []bool{
+				true, true, true, true, true, true, true, true,
+				true, true, true, true, true, true, true, true,
+				true, true, true, true, true, true, true, true,
+				true, true, true, true, true, true, true, true,
+			},
+		}
+		err := c.Send(&open)
+		if err != nil {
+			if c.onError != nil {
+				c.onError(c, SendErr(err))
+			}
+		}
+	} else {
+		log.Println("打开继电器失败,请重新连接服务器")
+	}
+}
+
 //打开继电器
 func (c *Client) RelayOpen(relay []bool) {
 	if c.connected {
@@ -257,6 +279,29 @@ func (c *Client) RelayOpen(relay []bool) {
 		}
 	} else {
 		log.Println("打开继电器失败,请重新连接服务器")
+	}
+}
+
+//断开所有继电器
+func (c *Client) RelayCloseAll() {
+	if c.connected {
+		open := CloseMessageRequest{
+			Relay: []bool{
+				true, true, true, true, true, true, true, true,
+				true, true, true, true, true, true, true, true,
+				true, true, true, true, true, true, true, true,
+				true, true, true, true, true, true, true, true,
+			},
+		}
+		encode, _ := Encode(&open)
+		_, err := c.sess.Write(encode)
+		if err != nil {
+			if c.onError != nil {
+				c.onError(c, err)
+			}
+		}
+	} else {
+		log.Println("关闭继电器失败,请重新连接服务器")
 	}
 }
 
@@ -280,7 +325,6 @@ func (c *Client) RelayClosed(relay []bool) {
 	} else {
 		log.Println("关闭继电器失败,请重新连接服务器")
 	}
-
 }
 
 //重置继电器

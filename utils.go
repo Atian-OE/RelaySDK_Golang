@@ -1,4 +1,4 @@
-package relaySDK
+package relaysdk
 
 import (
 	"bytes"

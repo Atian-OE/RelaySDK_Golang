@@ -1,95 +1,73 @@
-package relaySDK
+package relaysdk
 
 import (
 	"bytes"
 	"fmt"
+	uuid "github.com/iris-contrib/go.uuid"
 	"log"
 	"net"
-	"sync"
 	"time"
 )
 
-//客户端
-type Client struct {
-	one       sync.Once
-	sess      *net.TCPConn
-	connected bool
-	addr      string
-
-	reconnectTicker     *time.Ticker     //自动连接
-	reconnectTickerOver chan interface{} //关闭自动连接
-
-	heartBeatTicker     *time.Ticker     //心跳包的发送
-	heartBeatTickerOver chan interface{} //关闭心跳
-
-	onDisconnect func(c *Client)
-	onConnected  func(c *Client)
-	onConnecting func(c *Client)
-	onTimeout    func(c *Client)
-	onError      func(c *Client, err error)
-
-	onRelayOpen   func(data []byte)
-	onRelayClosed func(data []byte)
-	onRelayReset  func(data []byte)
-}
-
 //实例化客户端
 func NewSDKClient(addr string) *Client {
-	client := &Client{
+	c := &Client{
 		addr: addr,
+		port: 17000,
 	}
-	client.init()
-	return client
-}
-
-func (c *Client) OnConnecting(f func(c *Client)) {
-	c.onConnecting = f
-}
-
-func (c *Client) OnConnected(f func(c *Client)) {
-	c.onConnected = f
-}
-
-func (c *Client) OnDisconnect(f func(c *Client)) {
-	c.onDisconnect = f
-}
-
-func (c *Client) OnTimeout(f func(c *Client)) {
-	c.onTimeout = f
-}
-
-func (c *Client) OnError(f func(c *Client, err error)) {
-	c.onError = f
-}
-
-func (c *Client) OnRelayOpen(f func(data []byte)) {
-	c.onRelayOpen = f
-}
-
-func (c *Client) OnRelayClosed(f func(data []byte)) {
-	c.onRelayClosed = f
-}
-
-func (c *Client) OnRelayReset(f func(data []byte)) {
-	c.onRelayReset = f
+	if c.Id() == "" {
+		v4, err := uuid.NewV4()
+		if err != nil {
+			c.SetId("")
+		} else {
+			c.SetId(v4.String())
+		}
+	}
+	c.init()
+	return c
 }
 
 //初始化
 func (c *Client) init() {
-
-	c.heartBeatTicker = time.NewTicker(time.Second * 5)
+	c.heartBeatTicker = time.NewTicker(time.Second * c.HeartBeatTime())
 	c.heartBeatTickerOver = make(chan interface{})
-
-	c.reconnectTicker = time.NewTicker(time.Second * 15)
+	c.reconnectTicker = time.NewTicker(time.Second * c.ReconnectTime())
 	c.reconnectTickerOver = make(chan interface{})
-
 	go c.reconnect()
+}
+
+func (c *Client) reconnect() {
+	c.connected = false
+	c.connect()
+	for {
+		select {
+		case <-c.reconnectTicker.C:
+			if !c.connected {
+				c.count += 1
+				if c.reconnectTimes == 0 {
+					log.Println(fmt.Sprintf("[ 继电器客户端%s ]正在无限尝试第[ %d/%d ]次重新连接[ %s ]...", c.Id(), c.count, c.reconnectTimes, c.addr))
+					c.connect()
+				} else {
+					if c.count <= c.reconnectTimes {
+						log.Println(fmt.Sprintf("[ 继电器客户端%s ]正在尝试第[ %d/%d ]次重新连接[ %s ]...", c.Id(), c.count, c.reconnectTimes, c.addr))
+						c.connect()
+					} else {
+						log.Println(fmt.Sprintf("[ 继电器客户端%s ]第[ %d/%d ]次重新连接失败,断开连接[ %s ]...", c.Id(), c.count-1, c.reconnectTimes, c.addr))
+						c.Close()
+					}
+				}
+			}
+		case <-c.reconnectTickerOver:
+			log.Println(fmt.Sprintf("[ 继电器客户端%s ]断开连接[ %s ]...", c.Id(), c.addr))
+			return
+		}
+	}
 }
 
 //连接
 func (c *Client) connect() {
 	if !c.connected {
-		conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s", c.addr), time.Second*3)
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", c.addr, c.port), time.Second*3)
 		if c.onConnecting != nil {
 			c.onConnecting(c)
 		}
@@ -97,7 +75,6 @@ func (c *Client) connect() {
 			if c.onTimeout != nil {
 				c.onTimeout(c)
 			}
-			c.reconnect()
 			return
 		}
 		tcpConn, ok := conn.(*net.TCPConn)
@@ -105,7 +82,6 @@ func (c *Client) connect() {
 			if c.onError != nil {
 				c.onError(c, err)
 			}
-			c.reconnect()
 			return
 		}
 		c.sess = tcpConn
@@ -126,22 +102,6 @@ func (c *Client) connect() {
 	}
 }
 
-func (c *Client) reconnect() {
-	c.connected = false
-	time.Sleep(time.Second)
-	c.connect()
-	for {
-		select {
-		case <-c.reconnectTicker.C:
-			c.connect()
-			return
-
-		case <-c.reconnectTickerOver:
-			return
-		}
-	}
-}
-
 //心跳
 func (c *Client) heartBeat() {
 	for {
@@ -150,18 +110,17 @@ func (c *Client) heartBeat() {
 			if c.connected {
 				data, _ := Encode(&HeartBeat{})
 				_, err := c.sess.Write(data)
-				log.Println("客户端发送心跳包", data[4])
 				if err != nil {
 					if c.onError != nil {
 						c.onError(c, err)
 					}
-					log.Println("发送心跳包失败")
+					log.Println(fmt.Sprintf("[ 继电器客户端%s ]发送心跳包失败...", c.Id()))
 					c.reconnect()
 					return
 				}
 			}
 		case <-c.heartBeatTickerOver:
-			log.Println("停止心跳")
+			log.Println(fmt.Sprintf("[ 继电器客户端%s ]停止心跳...", c.Id()))
 			return
 		}
 	}
@@ -169,7 +128,7 @@ func (c *Client) heartBeat() {
 
 //消息处理,解包
 func (c *Client) clientHandle() {
-	//defer c.Close()
+	defer c.Close()
 	buf := make([]byte, 1024)
 	var cache bytes.Buffer
 	for {
@@ -219,29 +178,27 @@ func (c *Client) Send(msg interface{}) error {
 
 //关闭操作
 func (c *Client) Close() {
-	c.one.Do(func() {
-		c.reconnectTicker.Stop()
-		c.reconnectTickerOver <- false
-		close(c.reconnectTickerOver)
+	c.reconnectTicker.Stop()
+	c.reconnectTickerOver <- false
+	close(c.reconnectTickerOver)
 
-		c.heartBeatTicker.Stop()
-		c.heartBeatTickerOver <- false
-		close(c.heartBeatTickerOver)
+	c.heartBeatTicker.Stop()
+	c.heartBeatTickerOver <- false
+	close(c.heartBeatTickerOver)
 
-		if c.sess != nil {
-			c.Handle(DisconnectID, nil, c.sess)
-			err := c.sess.Close()
-			if err != nil {
-				if c.onError != nil {
-					c.onError(c, err)
-				}
-				log.Println("关闭连接失败", err)
+	if c.sess != nil {
+		c.Handle(DisconnectID, nil, c.sess)
+		err := c.sess.Close()
+		if err != nil {
+			if c.onError != nil {
+				c.onError(c, err)
 			}
+			log.Println("关闭连接失败", err)
 		}
-		c.connected = false
-		c.sess = nil
-		log.Println("客户端关闭连接成功")
-	})
+	}
+	c.connected = false
+	c.sess = nil
+	log.Println(fmt.Sprintf("[ 继电器客户端%s ]关闭成功...", c.Id()))
 }
 
 //闭合所有继电器

@@ -1,6 +1,7 @@
-package relaySDK
+package relaysdk_test
 
 import (
+	"github.com/Atian-OE/RelaySDK_Golang"
 	"log"
 	"testing"
 	"time"
@@ -14,23 +15,54 @@ func BenchmarkName(b *testing.B) {
 func TestClient(t *testing.T) {
 	test()
 }
-func test() {
-	sdkClient := NewSDKClient("192.168.0.176:17000")
+func TestName2(t *testing.T) {
+	c := relaysdk.NewSDKClient("192.168.0.112").
+		SetReconnectTime(8).
+		SetReconnectTimes(5).
+		OnTimeout(func(c *relaysdk.Client) {
+			log.Println("超时...")
+			c.SetAddress("192.168.0.113").OnConnected(func(c *relaysdk.Client) {
+				c.RelayCloseAll()
+				log.Println("OKK......")
+				c.RelayOpenAll()
+			}).OnTimeout(func(c *relaysdk.Client) {
+				c.SetAddress("192.168.0.111").OnConnected(func(c *relaysdk.Client) {
+					c.RelayCloseAll()
+					log.Println("OKK......")
+					c.RelayOpenAll()
+				})
+			})
+		}).OnConnected(func(c *relaysdk.Client) {
+		log.Println("OK...")
+	})
+	log.Println(c.Id())
+	time.Sleep(time.Hour)
+}
 
-	sdkClient.OnConnecting(func(c *Client) {
+func TestName(t *testing.T) {
+	client := relaysdk.NewSDKClient("127.0.0.1:17000")
+	time.Sleep(2 * time.Second)
+	client.RelayOpenAll()
+	time.Sleep(2 * time.Second)
+	client.RelayCloseAll()
+}
+func test() {
+	sdkClient := relaysdk.NewSDKClient("192.168.0.111:17000")
+
+	sdkClient.OnConnecting(func(c *relaysdk.Client) {
 		log.Println("正在连接到服务器")
 	})
 
-	sdkClient.OnConnected(func(c *Client) {
+	sdkClient.OnConnected(func(c *relaysdk.Client) {
 		log.Println("已连接到服务器")
 	})
 
-	sdkClient.OnTimeout(func(c *Client) {
+	sdkClient.OnTimeout(func(c *relaysdk.Client) {
 		log.Println("连接到服务器超时")
 		return
 	})
 
-	sdkClient.OnError(func(c *Client, err error) {
+	sdkClient.OnError(func(c *relaysdk.Client, err error) {
 		log.Println("err", err)
 		return
 	})

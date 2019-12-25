@@ -15,28 +15,45 @@ func BenchmarkName(b *testing.B) {
 func TestClient(t *testing.T) {
 	test()
 }
-func TestName2(t *testing.T) {
+func BenchmarkName2(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		test2()
+	}
+}
+func TestName3(t *testing.T) {
+	for i := 0; i < 10; i++ {
+		test2()
+	}
+}
+func test2() {
 	c := relaysdk.NewSDKClient("192.168.0.112").
-		SetReconnectTime(8).
+		SetReconnectTime(5).
 		SetReconnectTimes(5).
 		OnTimeout(func(c *relaysdk.Client) {
-			log.Println("超时...")
+			log.Println("连接超时........")
 			c.SetAddress("192.168.0.113").OnConnected(func(c *relaysdk.Client) {
 				c.RelayCloseAll()
-				log.Println("OKK......")
 				c.RelayOpenAll()
 			}).OnTimeout(func(c *relaysdk.Client) {
 				c.SetAddress("192.168.0.111").OnConnected(func(c *relaysdk.Client) {
+					log.Println("连接成功......开始逻辑处理......")
 					c.RelayCloseAll()
-					log.Println("OKK......")
+					time.Sleep(time.Second * 3)
 					c.RelayOpenAll()
+					time.Sleep(time.Second * 3)
+					c.RelayCloseAll()
+					time.Sleep(time.Second * 5)
+					c.Close()
 				})
 			})
 		}).OnConnected(func(c *relaysdk.Client) {
-		log.Println("OK...")
 	})
 	log.Println(c.Id())
-	time.Sleep(time.Hour)
+	time.Sleep(time.Minute / 2)
+	log.Println("单条测试关闭.....")
+}
+func TestName2(t *testing.T) {
+	test2()
 }
 
 func TestName(t *testing.T) {
@@ -47,7 +64,7 @@ func TestName(t *testing.T) {
 	client.RelayCloseAll()
 }
 func test() {
-	sdkClient := relaysdk.NewSDKClient("192.168.0.111:17000")
+	sdkClient := relaysdk.NewSDKClient("192.168.0.111")
 
 	sdkClient.OnConnecting(func(c *relaysdk.Client) {
 		log.Println("正在连接到服务器")

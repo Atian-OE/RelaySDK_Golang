@@ -80,7 +80,7 @@ func (c *Client) SetReconnectTimes(reconnectTimes int) *Client {
 
 func (c *Client) ReconnectTime() time.Duration {
 	if c.reconnectTime == 0 {
-		c.reconnectTime = 10
+		c.reconnectTime = time.Second * 10
 	}
 	return c.reconnectTime
 }

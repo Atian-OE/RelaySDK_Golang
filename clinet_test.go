@@ -3,10 +3,14 @@ package relaysdk_test
 import (
 	"github.com/Atian-OE/RelaySDK_Golang"
 	"log"
+	"math"
 	"testing"
 	"time"
 )
 
+func TestName4(t *testing.T) {
+	log.Println(math.MaxUint16)
+}
 func BenchmarkName(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		test()
@@ -27,7 +31,7 @@ func TestName3(t *testing.T) {
 }
 func test2() {
 	c := relaysdk.NewSDKClient("192.168.0.112").
-		SetReconnectTime(5).
+		SetReconnectTime(time.Second * 5).
 		SetReconnectTimes(5).
 		OnTimeout(func(c *relaysdk.Client) {
 			log.Println("连接超时........")
@@ -35,19 +39,18 @@ func test2() {
 				c.RelayCloseAll()
 				c.RelayOpenAll()
 			}).OnTimeout(func(c *relaysdk.Client) {
-				c.SetAddress("192.168.0.111").OnConnected(func(c *relaysdk.Client) {
+				c.SetAddress("192.168.0.119").OnConnected(func(c *relaysdk.Client) {
 					log.Println("连接成功......开始逻辑处理......")
 					c.RelayCloseAll()
-					time.Sleep(time.Second * 3)
+					time.Sleep(time.Second * 2)
 					c.RelayOpenAll()
-					time.Sleep(time.Second * 3)
+					time.Sleep(time.Second * 2)
 					c.RelayCloseAll()
-					time.Sleep(time.Second * 5)
+					time.Sleep(time.Second * 2)
 					c.Close()
 				})
 			})
-		}).OnConnected(func(c *relaysdk.Client) {
-	})
+		}).OnConnected(func(c *relaysdk.Client) {})
 	log.Println(c.Id())
 	time.Sleep(time.Minute * 2)
 	log.Println("单条测试关闭.....")

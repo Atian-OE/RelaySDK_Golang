@@ -13,8 +13,9 @@ import (
 //实例化客户端
 func NewSDKClient(addr string) *Client {
 	c := &Client{
-		addr: addr,
-		port: 17000,
+		addr:          addr,
+		port:          17000,
+		reconnectTime: time.Second * 10,
 	}
 	if c.Id() == "" {
 		v4, err := uuid.NewV4()
@@ -30,22 +31,20 @@ func NewSDKClient(addr string) *Client {
 
 //初始化
 func (c *Client) init() {
-	c.reconnectTicker = time.NewTicker(time.Second * c.ReconnectTime())
+	c.reconnectTicker = time.NewTicker(c.ReconnectTime())
 	c.reconnectTickerOver = make(chan interface{})
 	go c.reconnect()
 }
 
 func (c *Client) reconnect() {
-	c.connected = false
-	c.connect()
 	for {
 		select {
 		case <-c.reconnectTicker.C:
-			go func() {
-				if !c.IsConnected() {
+			if !c.IsConnected() {
+				go func() {
 					c.count += 1
 					if c.ReconnectTimes() == 0 {
-						log.Println(fmt.Sprintf("[ 继电器客户端%s ]正在无限尝试第[ %d/%d ]次重新连接[ %s ]...", c.Id(), c.count, c.ReconnectTimes(), c.addr))
+						log.Println(fmt.Sprintf("[ 继电器客户端%s ]正在无限尝试第[ %d ]次重新连接[ %s ]...", c.Id(), c.count, c.addr))
 						c.connect()
 					} else {
 						if c.count <= c.ReconnectTimes() {
@@ -54,12 +53,10 @@ func (c *Client) reconnect() {
 						} else {
 							log.Println(fmt.Sprintf("[ 继电器客户端%s ]第[ %d/%d ]次连接失败,断开连接[ %s ]...", c.Id(), c.count-1, c.ReconnectTimes(), c.addr))
 							c.Close()
-							return
 						}
 					}
-				}
-			}()
-
+				}()
+			}
 		case <-c.reconnectTickerOver:
 			log.Println(fmt.Sprintf("[ 继电器客户端%s ]断开连接[ %s ]...", c.Id(), c.addr))
 			return
@@ -94,6 +91,7 @@ func (c *Client) connect() {
 		if c.onConnected != nil {
 			go c.onConnected(c)
 		}
+		c.reconnecting = false
 		go c.heartBeat()
 		go c.clientHandle()
 	}

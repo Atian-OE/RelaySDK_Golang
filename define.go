@@ -28,7 +28,6 @@ type Client struct {
 	onConnected  func(c *Client)
 	onConnecting func(c *Client)
 	onTimeout    func(c *Client)
-	onError      func(c *Client, err error)
 
 	onRelayOpen   func(data []byte)
 	onRelayClosed func(data []byte)
@@ -54,6 +53,15 @@ func (c *Client) SetId(id string) *Client {
 
 func (c *Client) Port() int {
 	return c.port
+}
+
+func (c *Client) SetPort(port int) *Client {
+	c.port = port
+	return c
+}
+
+func (c *Client) Address() string {
+	return c.addr
 }
 
 func (c *Client) SetAddress(address string) *Client {
@@ -89,8 +97,9 @@ func (c *Client) HeartBeatTime() time.Duration {
 	return c.heartBeatTime
 }
 
-func (c *Client) OnConnecting(f func(c *Client)) {
+func (c *Client) OnConnecting(f func(c *Client)) *Client {
 	c.onConnecting = f
+	return c
 }
 
 func (c *Client) OnConnected(f func(c *Client)) *Client {
@@ -98,8 +107,9 @@ func (c *Client) OnConnected(f func(c *Client)) *Client {
 	return c
 }
 
-func (c *Client) OnDisconnect(f func(c *Client)) {
+func (c *Client) OnDisconnect(f func(c *Client)) *Client {
 	c.onDisconnect = f
+	return c
 }
 
 func (c *Client) OnTimeout(f func(c *Client)) *Client {
@@ -107,18 +117,17 @@ func (c *Client) OnTimeout(f func(c *Client)) *Client {
 	return c
 }
 
-func (c *Client) OnError(f func(c *Client, err error)) {
-	c.onError = f
-}
-
-func (c *Client) OnRelayOpen(f func(data []byte)) {
+func (c *Client) OnRelayOpen(f func(data []byte)) *Client {
 	c.onRelayOpen = f
+	return c
 }
 
-func (c *Client) OnRelayClosed(f func(data []byte)) {
+func (c *Client) OnRelayClosed(f func(data []byte)) *Client {
 	c.onRelayClosed = f
+	return c
 }
 
-func (c *Client) OnRelayReset(f func(data []byte)) {
+func (c *Client) OnRelayReset(f func(data []byte)) *Client {
 	c.onRelayReset = f
+	return c
 }

@@ -49,7 +49,7 @@ func test2() {
 		}).OnConnected(func(c *relaysdk.Client) {
 	})
 	log.Println(c.Id())
-	time.Sleep(time.Minute / 2)
+	time.Sleep(time.Minute * 2)
 	log.Println("单条测试关闭.....")
 }
 func TestName2(t *testing.T) {
@@ -79,10 +79,6 @@ func test() {
 		return
 	})
 
-	sdkClient.OnError(func(c *relaysdk.Client, err error) {
-		log.Println("err", err)
-		return
-	})
 	time.Sleep(time.Second * 2)
 	open := [32]bool{true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, true}
 	sdkClient.RelayOpen(open[:])

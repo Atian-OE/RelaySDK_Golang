@@ -54,6 +54,7 @@ func (c *Client) reconnect() {
 						} else {
 							log.Println(fmt.Sprintf("[ 继电器客户端%s ]第[ %d/%d ]次连接失败,断开连接[ %s ]...", c.Id(), c.count-1, c.ReconnectTimes(), c.addr))
 							c.Close()
+							return
 						}
 					}
 				}
@@ -172,18 +173,20 @@ func (c *Client) Close() {
 	if c.sess != nil {
 		c.Handle(DisconnectID, nil, c.sess)
 		c.heartBeatTickerOver <- false
-		c.reconnectTickerOver <- false
 		c.heartBeatTicker.Stop()
 		close(c.heartBeatTickerOver)
-		c.reconnectTicker.Stop()
-		close(c.reconnectTickerOver)
+
 		err := c.sess.Close()
 		if err != nil {
 			log.Println(fmt.Sprintf("[ 继电器客户端%s ]关闭失败:[ %s ]...", c.Id(), err))
 		}
 		c.sess = nil
 	}
+	c.reconnectTickerOver <- false
+	c.reconnectTicker.Stop()
+	close(c.reconnectTickerOver)
 	c.connected = false
+	time.Sleep(time.Second)
 	log.Println(fmt.Sprintf("[ 继电器客户端%s ]关闭成功...", c.Id()))
 }
 

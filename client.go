@@ -7,14 +7,26 @@ import (
 	uuid "github.com/iris-contrib/go.uuid"
 	"log"
 	"net"
+	"strconv"
+	"strings"
 	"time"
 )
 
 //实例化客户端
 func NewSDKClient(addr string) *Client {
+	var err error
+	port := 17000
+	a := strings.Split(addr, ":")
+	if len(a) == 2 {
+		addr = a[0]
+		port, err = strconv.Atoi(a[1])
+		if err != nil {
+			port = 17000
+		}
+	}
 	c := &Client{
 		addr:          addr,
-		port:          17000,
+		port:          port,
 		reconnectTime: time.Second * 10,
 	}
 	if c.Id() == "" {
@@ -37,15 +49,19 @@ func (c *Client) init() {
 }
 
 func (c *Client) reconnect() {
+	c.connected = false
+	c.connect()
 	for {
 		select {
 		case <-c.reconnectTicker.C:
 			if !c.IsConnected() {
 				go func() {
 					c.count += 1
-					if c.ReconnectTimes() == 0 {
+					if c.reconnectTimes < 0 {
 						log.Println(fmt.Sprintf("[ 继电器客户端%s ]正在无限尝试第[ %d ]次重新连接[ %s ]...", c.Id(), c.count, c.addr))
 						c.connect()
+					} else if c.reconnectTimes == 0 {
+						c.Close()
 					} else {
 						if c.count <= c.ReconnectTimes() {
 							log.Println(fmt.Sprintf("[ 继电器客户端%s ]正在尝试第[ %d/%d ]次连接[ %s ]...", c.Id(), c.count, c.ReconnectTimes(), c.addr))
@@ -70,6 +86,7 @@ func (c *Client) connect() {
 		conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", c.addr, c.Port()), time.Second*3)
 		if c.onConnecting != nil {
 			go c.onConnecting(c)
+			time.Sleep(time.Millisecond)
 		}
 		if err != nil {
 			if c.onTimeout != nil {
@@ -90,6 +107,7 @@ func (c *Client) connect() {
 		c.connected = true
 		if c.onConnected != nil {
 			go c.onConnected(c)
+			time.Sleep(time.Millisecond)
 		}
 		c.reconnecting = false
 		go c.heartBeat()

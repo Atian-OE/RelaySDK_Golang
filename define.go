@@ -28,6 +28,7 @@ type Client struct {
 	onConnected  func(c *Client)
 	onConnecting func(c *Client)
 	onTimeout    func(c *Client)
+	onClose      func(c *Client)
 
 	onRelayOpen   func(data []byte)
 	onRelayClosed func(data []byte)
@@ -114,6 +115,11 @@ func (c *Client) OnDisconnect(f func(c *Client)) *Client {
 
 func (c *Client) OnTimeout(f func(c *Client)) *Client {
 	c.onTimeout = f
+	return c
+}
+
+func (c *Client) OnClose(f func(c *Client)) *Client {
+	c.onClose = f
 	return c
 }
 

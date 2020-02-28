@@ -203,6 +203,9 @@ func (c *Client) Close() {
 	close(c.reconnectTickerOver)
 	c.connected = false
 	time.Sleep(time.Second)
+	if c.onClose != nil {
+		c.onClose(c)
+	}
 	log.Println(fmt.Sprintf("[ 继电器客户端%s ]关闭成功...", c.Id()))
 }
 
